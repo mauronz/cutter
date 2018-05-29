@@ -186,11 +186,17 @@ QJsonDocument CutterCore::cmdj(const QString &str)
     QByteArray cmd = str.toUtf8();
 
     char *res = r_core_cmd_str(this->core_, cmd.constData());
+    QJsonDocument doc = parseJson(res, str);
+    r_mem_free(res);
 
+    return doc;
+}
+
+QJsonDocument CutterCore::parseJson(const char *res, const QString &cmd)
+{
     QString resString = QString(res);
 
     if (resString.isEmpty()) {
-        r_mem_free(res);
         return QJsonDocument();
     }
 
@@ -198,12 +204,15 @@ QJsonDocument CutterCore::cmdj(const QString &str)
     QJsonDocument doc = res ? QJsonDocument::fromJson(resString.toUtf8(), &jsonError) : QJsonDocument();
 
     if (jsonError.error != QJsonParseError::NoError) {
-        eprintf("Failed to parse JSON for command \"%s\": %s\n", str.toLocal8Bit().constData(),
-                jsonError.errorString().toLocal8Bit().constData());
+        if (!cmd.isNull()) {
+            eprintf("Failed to parse JSON for command \"%s\": %s\n", cmd.toLocal8Bit().constData(),
+                    jsonError.errorString().toLocal8Bit().constData());
+        } else {
+            eprintf("Failed to parse JSON: %s\n", jsonError.errorString().toLocal8Bit().constData());
+        }
         eprintf("%s\n", resString.toLocal8Bit().constData());
     }
 
-    r_mem_free(res);
     return doc;
 }
 
@@ -1135,22 +1144,7 @@ QList<StringDescription> CutterCore::getAllStrings()
     QList<StringDescription> ret;
     //QJsonDocument stringsDoc = cmdj("izzj");
 
-    /*QJsonObject stringsObj = stringsDoc.object();
-    QJsonArray stringsArray = stringsObj["strings"].toArray();
-    for (QJsonValue value : stringsArray) {
-        QJsonObject stringObject = value.toObject();
-
-        StringDescription string;
-        string.string = QString(QByteArray::fromBase64(stringObject["string"].toVariant().toByteArray()));
-        string.vaddr = stringObject["vaddr"].toVariant().toULongLong();
-        string.type = stringObject["type"].toString();
-        string.size = stringObject["size"].toVariant().toUInt();
-        string.length = stringObject["length"].toVariant().toUInt();
-
-        ret << string;
-    }
-
-    return ret;*/
+    /**/
 
 
     RBinFile *bf = r_core_bin_cur(core_);
@@ -1199,6 +1193,29 @@ QList<StringDescription> CutterCore::getAllStrings()
     }
 
     r_list_free(list);
+
+    return ret;
+}
+
+QList<StringDescription> CutterCore::parseStringsJson(const char *res)
+{
+    QJsonDocument stringsDoc = parseJson(res);
+    QList<StringDescription> ret;
+
+    QJsonObject stringsObj = stringsDoc.object();
+    QJsonArray stringsArray = stringsObj["strings"].toArray();
+    for (QJsonValue value : stringsArray) {
+        QJsonObject stringObject = value.toObject();
+
+        StringDescription string;
+        string.string = QString(QByteArray::fromBase64(stringObject["string"].toVariant().toByteArray()));
+        string.vaddr = stringObject["vaddr"].toVariant().toULongLong();
+        string.type = stringObject["type"].toString();
+        string.size = stringObject["size"].toVariant().toUInt();
+        string.length = stringObject["length"].toVariant().toUInt();
+
+        ret << string;
+    }
 
     return ret;
 }
@@ -1663,12 +1680,15 @@ QString CutterCore::getVersionInformation()
     }
     return ret;
 }
-
 QJsonArray CutterCore::getOpenedFiles()
 {
     QJsonDocument files = cmdj("oj");
     return files.array();
 }
+
+
+
+
 QList<QString> CutterCore::getColorThemes()
 {
     QList<QString> r;
@@ -1676,4 +1696,39 @@ QList<QString> CutterCore::getColorThemes()
     for (auto s : themes.array())
         r << s.toString();
     return r;
+}
+
+static int task_finished(void *user, void *data) {
+    eprintf ("TASK FINISHED\n");
+    return 0;
+}
+
+static int taskbgrun(RThread *th) {
+    char *res;
+    RCoreTask *task = reinterpret_cast<RCoreTask *>(th->user);
+    RCore *core = task->core;
+    // close (2); // no stderr
+    res = r_core_cmd_str (core, task->msg->text);
+    task->msg->res = res;
+    task->state = 'd';
+    eprintf ("\nTask %d finished\n", task->id);
+// TODO: run callback and pass result
+    return 0;
+}
+
+RCoreTask *CutterCore::startTask(const QString &cmd)
+{
+    RCoreTask *task = r_core_task_add(core_,
+        r_core_task_new(core_,
+                        cmd.toLocal8Bit().constData(),
+                        (RCoreTaskCallback)task_finished,
+                        core_));
+    RThread *th = r_th_new (taskbgrun, task, 0);
+    task->msg->th = th;
+    return task;
+}
+
+void CutterCore::joinTask(RCoreTask *task)
+{
+    r_th_wait(task->msg->th);
 }

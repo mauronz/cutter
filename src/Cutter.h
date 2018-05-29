@@ -326,6 +326,7 @@ public:
         l.removeAll("");
         return l;
     }
+    QJsonDocument parseJson(const char *res, const QString &cmd = QString());
 
     QList<DisassemblyLine> disassembleLines(RVA offset, int lines);
 
@@ -470,6 +471,8 @@ public:
     QList<XrefDescription> getXRefs(RVA addr, bool to, bool whole_function,
                                     const QString &filterType = QString::null);
 
+    QList<StringDescription> parseStringsJson(const char *res);
+
     void addFlag(RVA offset, QString name, RVA size);
     void triggerFlagsChanged();
 
@@ -486,6 +489,9 @@ public:
     QJsonArray getOpenedFiles();
 
     QList<QString> getColorThemes();
+
+    RCoreTask *startTask(const QString &cmd);
+    void joinTask(RCoreTask *task);
 
     RCoreLocked core() const;
 

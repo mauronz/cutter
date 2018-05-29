@@ -318,8 +318,13 @@ void MainWindow::openProject(const QString &project_name)
     finalizeOpen();
 }
 
+#include <valgrind/callgrind.h>
+
 void MainWindow::finalizeOpen()
 {
+    CALLGRIND_ZERO_STATS;
+    CALLGRIND_START_INSTRUMENTATION;
+
     core->getOpcodes();
 
     // Set settings to override any incorrect saved in the project
@@ -336,6 +341,9 @@ void MainWindow::finalizeOpen()
     // Add fortune message
     addOutput("\n" + core->cmd("fo"));
     showMaximized();
+
+    CALLGRIND_DUMP_STATS;
+    CALLGRIND_STOP_INSTRUMENTATION;
 }
 
 bool MainWindow::saveProject(bool quit)
