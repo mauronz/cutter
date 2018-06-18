@@ -48,7 +48,7 @@ before_script:
     else
         LDFLAGS=-headerpad_max_install_names INSTALL_TARGET=install sys/install.sh;
     fi
-  - cat radare2/pkgcfg/r_core.pc
+  - cat pkgcfg/r_core.pc
   - cd ..
 
 script:
