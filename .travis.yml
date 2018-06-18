@@ -6,6 +6,7 @@ branches:
   only:
   - master
   - pkgconfig-fix
+  - my-test
   - /^v\d.*$/
 
 matrix:
@@ -54,7 +55,7 @@ script:
   - cd build
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         if [[ "$BUILD_SYSTEM" == "qmake" ]]; then
-            PKG_CONFIG_PATH="$CUSTOM_PYTHON_PREFIX/lib/pkgconfig" qmake CUTTER_ENABLE_JUPYTER=true CUTTER_ENABLE_QTWEBENGINE=true PREFIX=/usr APPIMAGE=1 ../src && make -j4;
+            pkg-config --libs python3; pkg-config --libs r_core; PKG_CONFIG_PATH="$CUSTOM_PYTHON_PREFIX/lib/pkgconfig" qmake CUTTER_ENABLE_JUPYTER=true CUTTER_ENABLE_QTWEBENGINE=true PREFIX=/usr APPIMAGE=1 ../src && make -j4;
         elif [[ "$BUILD_SYSTEM" == "qmake" ]]; then
             cmake ../src && make -j4;
        fi
