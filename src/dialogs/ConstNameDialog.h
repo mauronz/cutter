@@ -9,7 +9,11 @@
 #include <QSortFilterProxyModel>
 #include <QKeyEvent>
 #include <QTextStream>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonValue>
 #include <memory>
+#include "Cutter.h"
 
 namespace Ui {
 class ConstNameDialog;
@@ -35,7 +39,6 @@ public slots:
 
 private:
     std::unique_ptr<Ui::ConstNameDialog> ui;
-    static QMultiMap<qulonglong, QString> constMap;
     QStringListModel *model;
     QSortFilterProxyModel *proxyModel;    
 

@@ -1,8 +1,6 @@
 #include "ConstNameDialog.h"
 #include "ui_ConstNameDialog.h"
 
-QMultiMap<qulonglong, QString> ConstNameDialog::constMap;
-
 ConstNameDialog::ConstNameDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::ConstNameDialog),
@@ -12,25 +10,6 @@ ConstNameDialog::ConstNameDialog(QWidget *parent) :
     ui->setupUi(this);
     setWindowFlags(windowFlags() & (~Qt::WindowContextHelpButtonHint));
         
-    if (ConstNameDialog::constMap.empty())
-    {
-        QFile file(":/data/constants.txt");
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        {
-            return;
-        }
-        QTextStream in(&file);
-        while (!in.atEnd())
-        {
-            QString line = in.readLine();
-            int pos = line.indexOf("=");
-            QString constName = line.left(pos);
-            qulonglong constValue;
-            constValue = line.right(line.size() - pos - 1).toLongLong();
-            ConstNameDialog::constMap.insert(constValue, constName);
-        }
-        file.close();
-    }
     proxyModel->setSourceModel(model);
     proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
     ui->listView->setModel(proxyModel);
@@ -81,13 +60,13 @@ QString ConstNameDialog::getConstName()
 
 void ConstNameDialog::setConstValue(qulonglong constant)
 {
+    QJsonObject jsonObject = Core()->cmdj("aCj " + QString::number(constant)).object();
     QString str = "0x" + QString("%1").arg(constant, 0, 16);
-    QList<QString> names = ConstNameDialog::constMap.values(constant);
-    qSort(names);
+    QJsonArray names = jsonObject["names"].toArray();
     QStringList list;
-    foreach (QString str, names)
+    foreach (QJsonValue str, names)
     {
-        list << str;
+        list << str.toString();
     }
     model->setStringList(list);
 
